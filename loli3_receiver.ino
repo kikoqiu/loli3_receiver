@@ -10,26 +10,34 @@
  * GND   -> GND
  */
 
-
-/*
- * IBus 
-* ibus   --> 2 RX
+/*		
+* ibus   --> 2
+* sbus   --> 3
 * vcc --> a3
-* vbat --> with scale to a2
+* vbat --> a2 (add Potentiometer)
 */
+
+//configure ch5 to sbus in controller to enable sbus output
+
+const uint8_t ibus_pin=3;
+const uint8_t sbus_pin=2;
+const long ibus_baudrate=115200;
+const long sbus_baudrate=100000;
+const bool sbus_invert_sig=true;
+const int8_t sbus_parity=0;//0 even or 1 odd, 2 if no parity bit
+const int sbus_stopbit=2;					 
 
 #include "nRF24L01.h"
 #include <EEPROM.h>
 
-#if 0
-#include <SoftwareSerial.h>
-//* no connect--> 3 TX
-SoftwareSerial mySerial(2, 3); // RX, TX
-#else
+//#include <SoftwareSerial.h>					  
+//SoftwareSerial mySerial(*, 3); 
+
 #include "SoftTxSerial.h"
-SoftTxSerial ibusSerial(3); //TX
-SoftTxSerial sbusSerial(2,false); //TX
-#endif
+SoftTxSerial ibusSerial(ibus_pin); 
+SoftTxSerial sbusSerial(sbus_pin,sbus_invert_sig,sbus_parity,sbus_stopbit); //TX,invert_login,stopbit
+
+
 
 #define IBusSerial ibusSerial
 #include "ibus.h"
@@ -164,7 +172,7 @@ void DATA_read()
 	{
 		
 	   first=1;
-
+       Serial.println("first=1");
 	}
 	else
 	{
@@ -217,6 +225,7 @@ void DATA_read()
 		CH7_SW=TEMP_DATA[37];
 		CH8_SW=TEMP_DATA[38];
 		SBUS=TEMP_DATA[39];
+        if(SBUS)Serial.println("SBUS output enabled");
 		
 	} 	
 }
@@ -274,42 +283,32 @@ void DATA_save()
 		sum+=TEMP_DATA[i];
 	}
 	TEMP_DATA[40]=sum>>8;//写入校验和
-	TEMP_DATA[41]=sum;
-	
-	
-  EEPROM_clean(0);
-        
+	TEMP_DATA[41]=sum;	
+  EEPROM_clean(0);        
   Serial.println("before write");
   delay(1);
   for(i=0;i<42;i++)
   {
     EEPROM_write(0,i,TEMP_DATA[i]);
   }
-  Serial.println("after write");
-
-				
+  Serial.println("after write");				
 }
 
 
 /**************************************************************************/
 //NRF24L01
 #define SOFTSPI 0
+
+
+const int ce_pin=7;
+const int csn_pin=8;
 #if SOFTSPI
-#warning buggy
+#error buggy
  const int MOSI_pin  = 11;
  const int MISO_pin  = 12;
  const int SCK_pin   = 13;
-#else
-#include <SPI.h>
-#endif
-const int ce_pin=7;
-const int csn_pin=8;
-
-#if SOFTSPI
 void sdelay(){
-  for(volatile long tt=0;tt<100;++tt){}
-  //delayus(100);
-  //delay(1);
+  _delay_loop_2(1);
 }
 /*u8 SPI_io(u8 byte)
 {  
@@ -343,6 +342,7 @@ u8 SPI_io(u8 byte)
 	return byte;
 }
 #else
+#include <SPI.h>
 u8 SPI_io(u8 byte)
 {
   //Serial.println(byte);
@@ -367,7 +367,6 @@ u8 REG_write(u8 address,u8 command,bool addressonly=false)
   return status;
 }
 
-#define R_REGISTER    0x00
 u8 REG_read(u8 address)
 {
 	digitalWrite(csn_pin,0);
@@ -615,12 +614,14 @@ void receiver_connect()
 /**************************************************************************/
 
 void data_check(int x,int max,int min)
-{
-	
+{	
 	if(x>max)x=max;
 	if(x<min)x=min;
-
 }
+
+
+
+
 
 void Get_Sbus_data()
 {
@@ -630,7 +631,8 @@ void Get_Sbus_data()
     ibus.write(CH_data[c]+1000);
   }
   ibus.end();
-  return;
+  
+  if(!SBUS)return;
 
 	Sbus_data[0]=CH_data[0]<<1;
 	Sbus_data[1]=CH_data[1]<<1;
@@ -651,21 +653,21 @@ void Get_Sbus_data()
 	Sbus_buff[4]=Sbus_data[2]>>2;
 	
 	Sbus_buff[5]=Sbus_data[2]>>10;
-		Sbus_buff[5]+=Sbus_data[3]<<1;
+	Sbus_buff[5]+=Sbus_data[3]<<1;
 	
 	Sbus_buff[6]=Sbus_data[3]>>7;
-		Sbus_buff[6]+=Sbus_data[4]<<4;
+	Sbus_buff[6]+=Sbus_data[4]<<4;
 	
 	Sbus_buff[7]=Sbus_data[4]>>4;
-		Sbus_buff[7]+=Sbus_data[5]<<7;
+	Sbus_buff[7]+=Sbus_data[5]<<7;
 		
 	Sbus_buff[8]=Sbus_data[5]>>1;
 		
 	Sbus_buff[9]=Sbus_data[5]>>9;
-		Sbus_buff[9]+=Sbus_data[6]<<2;
+	Sbus_buff[9]+=Sbus_data[6]<<2;
 		
 	Sbus_buff[10]=Sbus_data[6]>>6;
-		Sbus_buff[10]+=Sbus_data[7]<<5;
+	Sbus_buff[10]+=Sbus_data[7]<<5;
 		
 	Sbus_buff[11]=Sbus_data[7]>>3;
 	
@@ -694,6 +696,10 @@ void Get_Sbus_data()
 	Sbus_tx[22]=0;				
 	Sbus_tx[23]=0;//flag
 	Sbus_tx[24]=0;//End
+  //Serial.println("sbus");
+  for(uint8_t st=0;st<25;++st){
+    sbusSerial.write(Sbus_tx[st]);
+  }
 }
 
 void Cycle()
@@ -794,6 +800,17 @@ void Cycle()
 
 void initial()
 {
+  pinMode(4,INPUT_PULLUP);
+  pinMode(5,OUTPUT);
+  digitalWrite(5,LOW);
+  delay(1);
+  uint8_t SS1=digitalRead(4);
+  digitalWrite(5,HIGH);
+  delay(1);
+  uint8_t SS2=digitalRead(4);
+  restar=(SS1^SS2)&1;
+  pinMode(4,INPUT);
+  pinMode(5,INPUT);
 	/*CH5=0;CH6=1;			//如果CH5与CH6被短接，重新对码
 	delay(1);
 	if(CH6==0)		  //修正通道6插上舵机不能用
@@ -1154,8 +1171,8 @@ int mymain(){
 
 void setup()
 {
-  ibusSerial.begin(115200);
-  sbusSerial.begin(100000);
+  ibusSerial.begin(ibus_baudrate);
+  sbusSerial.begin(sbus_baudrate);
   Serial.begin(115200);
   mymain();
 }

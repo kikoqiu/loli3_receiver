@@ -52,6 +52,8 @@ private:
 
   uint16_t _buffer_overflow:1;
   uint16_t _inverse_logic:1;
+  int8_t _paritybit;
+  uint8_t _nStopbit;
 
 
 
@@ -65,7 +67,7 @@ private:
 
 public:
   // public methods
-  SoftTxSerial(uint8_t transmitPin, bool inverse_logic = false);
+  SoftTxSerial(uint8_t transmitPin, bool inverse_logic = false,int8_t sbus_parity=2/*0 even,1 odd , 2 for no parity*/ ,uint8_t nStopbit=1);
   ~SoftTxSerial();
   void begin(long speed); 
   void end();
@@ -126,9 +128,11 @@ inline void SoftTxSerial::tunedDelay(uint16_t delay) {
 //
 // Constructor
 //
-SoftTxSerial::SoftTxSerial(uint8_t transmitPin, bool inverse_logic /* = false */) : 
+SoftTxSerial::SoftTxSerial(uint8_t transmitPin, bool inverse_logic /* = false */,int8_t sbus_parity/*=2*/,uint8_t nStopbit/*=1*/) : 
   _tx_delay(0),
-  _inverse_logic(inverse_logic)
+  _inverse_logic(inverse_logic),
+  _paritybit(sbus_parity),
+  _nStopbit(nStopbit)
 {
   setTX(transmitPin);
 }
@@ -214,6 +218,13 @@ size_t SoftTxSerial::write(uint8_t b)
   if (inv)
     b = ~b;
 
+  uint8_t txparitybit=2;
+  if(_paritybit!=2){
+	  txparitybit=_paritybit;
+	  for(uint8_t i=0;i<8;++i){
+		  txparitybit^=(b>>i)&1;
+	  }
+  }
   cli();  // turn off interrupts for a clean txmit
 
   // Write the start bit
@@ -235,12 +246,28 @@ size_t SoftTxSerial::write(uint8_t b)
     tunedDelay(delay);
     b >>= 1;
   }
+  
+  if(txparitybit!=2){
+    if (txparitybit & 1)
+      *reg |= reg_mask; // send 1
+    else
+      *reg &= inv_mask; // send 0
+    tunedDelay(_tx_delay);
+  }
 
   // restore pin to natural state
   if (inv)
     *reg &= inv_mask;
   else
     *reg |= reg_mask;
+
+  for(uint8_t ns=1;ns<_nStopbit;++ns){
+	  tunedDelay(_tx_delay);
+	  if (inv)
+		*reg &= inv_mask;
+	  else
+		*reg |= reg_mask;
+  }
 
   SREG = oldSREG; // turn interrupts back on
   tunedDelay(_tx_delay);
