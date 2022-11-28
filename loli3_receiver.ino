@@ -92,32 +92,16 @@ u8 EEPROM_read(u8 address_H,u16 address_L)	//读数据
 {
   return EEPROM[address_L];
 }
-
 void EEPROM_write(u8 address_H,u16 address_L,u8 byte)	//写入数据
 {
   EEPROM.update(address_L, byte);
 }
-
 void EEPROM_clean(u8 address_H)	//擦除数据
 {
   //no action
 }
-
 u8 EEPROM_test(u8 address_H)
-{	
-  /*
-	EEPROM_clean(address_H);
-	EEPROM_write(address_H,0,0x88);
-	if(EEPROM_read(address_H,0)==0x88)
-	{
-		EEPROM_clean(address_H);
-		EEPROM_write(address_H,0,0x55);
-		if(EEPROM_read(address_H,0)==0x55)
-		{
-			return 1;
-		}
-	}*/
-	
+{		
 	return 0;
 }
 
@@ -269,7 +253,6 @@ void DATA_save()
   }
   Serial.println("after write");
 
-  //IAP_CONTR=0;
 }
 
 
@@ -440,14 +423,11 @@ void NRF_channel(u8 c)
 	digitalWrite(ce_pin,1);
 }
 
-
-#define RF24_NOP      0xFF
 uint8_t get_status()
 {
     return REG_write(RF24_NOP,RF24_NOP,true);
 }
 
-#define RX_P_NO     1
 bool available(uint8_t* pipe_num=0)
 {
     // get implied RX FIFO empty flag from status byte
@@ -461,7 +441,7 @@ bool available(uint8_t* pipe_num=0)
 
     return 1;
 }
-#define SETUP_AW    0x03
+
 void NRF_init()
 {
   Serial.println("NRF_init");
@@ -480,7 +460,7 @@ void NRF_init()
 	RX_address(address);
 	TX_address(address);
 }
-
+/*
 void NRF_test()	//无线模块终极测试
 {	
 	u8 reset_err=0;
@@ -525,6 +505,7 @@ void NRF_test()	//无线模块终极测试
 	
 	REG_write(0x07,0x20);	//清除TX中断信号
 }
+*/
 
 void receiver_connect()
 {
@@ -674,7 +655,6 @@ void Get_Sbus_data()
 	Sbus_tx[22]=0;				
 	Sbus_tx[23]=0;//flag
 	Sbus_tx[24]=0;//End
-
 
 }
 
@@ -873,6 +853,185 @@ void initial()
   
 }
 
+//process input 
+void processInputData(){
+  if(rx[0]==0xa2)
+  {
+    Light_LED=1;
+    
+    if(rx[1]&0x80)
+    {
+      PPM_OUT=1;
+    }
+    else 
+    {
+      PPM_OUT=0;
+    }
+    
+    if(rx[1]&0x40)
+    {
+      SBUS=1;
+    }
+    else 
+    {
+      SBUS=0;
+    }
+    
+    if(SBUS)
+    {
+      //UartInit();
+    }
+    
+    if(rx[1]&0x08)
+    {
+      CH1_PWM=1;
+    }
+    else 
+    {
+      CH1_PWM=0;
+    }
+    
+    if(rx[1]&0x04)
+    {
+      CH2_PWM=1;
+    }
+    else 
+    {
+      CH2_PWM=0;
+    }
+    
+    if(rx[1]&0x02)
+    {
+      CH7_PWM=1;
+    }
+    else 
+    {
+      CH7_PWM=0;
+    }
+    
+    if(rx[2]&0x80)CH1_SW=1;
+    else CH1_SW=0;
+    if(rx[2]&0x40)CH2_SW=1;
+    else CH2_SW=0;
+    if(rx[2]&0x20)CH3_SW=1;
+    else CH3_SW=0;
+    if(rx[2]&0x10)CH4_SW=1;
+    else CH4_SW=0;
+    if(rx[2]&0x08)CH5_SW=1;
+    else CH5_SW=0;
+    if(rx[2]&0x04)CH6_SW=1;
+    else CH6_SW=0;
+    if(rx[2]&0x02)CH7_SW=1;
+    else CH7_SW=0;
+    if(rx[2]&0x01)CH8_SW=1;
+    else CH8_SW=0;				
+    
+    Data_change=1;timer4=0;
+  }
+  else if(rx[0]==0xa0)
+  {
+    Light_LED=1;LED=0;
+    
+    buff[0]=rx[1];
+    buff[0]<<=2;
+    buff[0]+=rx[2]>>6;
+    buff[1]=rx[2]&0x3f;
+    buff[1]<<=4;
+    buff[1]+=rx[3]>>4;			
+    buff[2]=rx[3]&0x0f;
+    buff[2]<<=6;
+    buff[2]+=rx[4]>>2;
+    buff[3]=rx[4]&0x03;
+    buff[3]<<=8;
+    buff[3]+=rx[5];
+
+    buff[4]=rx[6];
+    buff[4]<<=2;
+    buff[4]+=rx[7]>>6;
+    buff[5]=rx[7]&0x3f;
+    buff[5]<<=4;
+    buff[5]+=rx[8]>>4;			
+    buff[6]=rx[8]&0x0f;
+    buff[6]<<=6;
+    buff[6]+=rx[9]>>2;
+    buff[7]=rx[9]&0x03;
+    buff[7]<<=8;
+    buff[7]+=rx[10];
+    
+    
+    data_check(buff[0],1023,0);
+    data_check(buff[1],1023,0);
+    data_check(buff[2],1023,0);
+    data_check(buff[3],1023,0);
+    data_check(buff[4],1023,0);
+    data_check(buff[5],1023,0);
+    data_check(buff[6],1023,0);
+    data_check(buff[7],1023,0);
+    
+    out_control_data[0]=buff[0];
+    out_control_data[1]=buff[1];
+    out_control_data[2]=buff[2];
+    out_control_data[3]=buff[3];
+    out_control_data[4]=buff[4];
+    out_control_data[5]=buff[5];
+    out_control_data[6]=buff[6];
+    out_control_data[7]=buff[7];
+    
+    
+    Data_change=1;timer4=0;				
+    
+  }
+  else if(rx[0]==0xa1)
+  {
+    buff[0]=rx[1];
+    buff[0]<<=2;
+    buff[0]+=rx[2]>>6;
+    buff[1]=rx[2]&0x3f;
+    buff[1]<<=4;
+    buff[1]+=rx[3]>>4;			
+    buff[2]=rx[3]&0x0f;
+    buff[2]<<=6;
+    buff[2]+=rx[4]>>2;
+    buff[3]=rx[4]&0x03;
+    buff[3]<<=8;
+    buff[3]+=rx[5];
+
+    buff[4]=rx[6];
+    buff[4]<<=2;
+    buff[4]+=rx[7]>>6;
+    buff[5]=rx[7]&0x3f;
+    buff[5]<<=4;
+    buff[5]+=rx[8]>>4;			
+    buff[6]=rx[8]&0x0f;
+    buff[6]<<=6;
+    buff[6]+=rx[9]>>2;
+    buff[7]=rx[9]&0x03;
+    buff[7]<<=8;
+    buff[7]+=rx[10];
+    
+    
+    data_check(buff[0],1023,0);
+    data_check(buff[1],1023,0);
+    data_check(buff[2],1023,0);
+    data_check(buff[3],1023,0);
+    data_check(buff[4],1023,0);
+    data_check(buff[5],1023,0);
+    data_check(buff[6],1023,0);
+    data_check(buff[7],1023,0);
+    
+    CH_data[0]=buff[0];
+    CH_data[1]=buff[1];
+    CH_data[2]=buff[2];
+    CH_data[3]=buff[3];
+    CH_data[4]=buff[4];
+    CH_data[5]=buff[5];
+    CH_data[6]=buff[6];
+    CH_data[7]=buff[7];
+    
+    Get_Sbus_data();
+  }
+}
+
 int mymain(){
   delay(100);
 
@@ -912,8 +1071,10 @@ int mymain(){
       }
     }while((!available())&&nolose);
 
+
 		if(nolose)
-		{	
+		{
+      unsigned long prevtime=micros();
 			jump_1=0;jump_2=0;hopping_count=0;//收到有效信号后刷新跳频器
 			receive++;timer1=0;timer3=0;m=0;	
 			if(Light_LED)Light_LED=0;
@@ -922,9 +1083,15 @@ int mymain(){
 			digitalWrite(ce_pin,0);
 			REG_write(0x07,0x40);	//清除无线模块中断信号
 			digitalWrite(ce_pin,1);
-      
-      delay(1);//???why???
-			TX_mode();
+
+      //process input first
+      processInputData();
+      //wait for the sender to get ready for rx   !!! 
+      //delay(1);
+      while(true){
+        unsigned long timepassed=(long)micros()-long(prevtime);
+        if(timepassed>=500)break;
+      }
 
 			tx[0]=rx_num;
       last_adc1=1299210/4;
@@ -942,7 +1109,7 @@ int mymain(){
 			delay(1);
 
 			RX_mode();
-						
+
 			if(jump_mode)
 			{
 				jump_mode=0;
@@ -950,184 +1117,7 @@ int mymain(){
 			}
 			hopping_turn++;
 			if(hopping_turn>4)hopping_turn=0;
-			NRF_channel(hopping[hopping_turn]);		
-
-
-			if(rx[0]==0xa2)
-			{
-				Light_LED=1;
-				
-				if(rx[1]&0x80)
-				{
-					PPM_OUT=1;
-				}
-				else 
-				{
-					PPM_OUT=0;
-				}
-				
-				if(rx[1]&0x40)
-				{
-					SBUS=1;
-				}
-				else 
-				{
-					SBUS=0;
-				}
-				
-				if(SBUS)
-				{
-					//UartInit();
-				}
-				
-				if(rx[1]&0x08)
-				{
-					CH1_PWM=1;
-				}
-				else 
-				{
-					CH1_PWM=0;
-				}
-				
-				if(rx[1]&0x04)
-				{
-					CH2_PWM=1;
-				}
-				else 
-				{
-					CH2_PWM=0;
-				}
-				
-				if(rx[1]&0x02)
-				{
-					CH7_PWM=1;
-				}
-				else 
-				{
-					CH7_PWM=0;
-				}
-				
-				if(rx[2]&0x80)CH1_SW=1;
-				else CH1_SW=0;
-				if(rx[2]&0x40)CH2_SW=1;
-				else CH2_SW=0;
-				if(rx[2]&0x20)CH3_SW=1;
-				else CH3_SW=0;
-				if(rx[2]&0x10)CH4_SW=1;
-				else CH4_SW=0;
-				if(rx[2]&0x08)CH5_SW=1;
-				else CH5_SW=0;
-				if(rx[2]&0x04)CH6_SW=1;
-				else CH6_SW=0;
-				if(rx[2]&0x02)CH7_SW=1;
-				else CH7_SW=0;
-				if(rx[2]&0x01)CH8_SW=1;
-				else CH8_SW=0;				
-				
-				Data_change=1;timer4=0;
-			}
-			else if(rx[0]==0xa0)
-			{
-				Light_LED=1;LED=0;
-				
-				buff[0]=rx[1];
-				buff[0]<<=2;
-				buff[0]+=rx[2]>>6;
-				buff[1]=rx[2]&0x3f;
-				buff[1]<<=4;
-				buff[1]+=rx[3]>>4;			
-				buff[2]=rx[3]&0x0f;
-				buff[2]<<=6;
-				buff[2]+=rx[4]>>2;
-				buff[3]=rx[4]&0x03;
-				buff[3]<<=8;
-				buff[3]+=rx[5];
-
-				buff[4]=rx[6];
-				buff[4]<<=2;
-				buff[4]+=rx[7]>>6;
-				buff[5]=rx[7]&0x3f;
-				buff[5]<<=4;
-				buff[5]+=rx[8]>>4;			
-				buff[6]=rx[8]&0x0f;
-				buff[6]<<=6;
-				buff[6]+=rx[9]>>2;
-				buff[7]=rx[9]&0x03;
-				buff[7]<<=8;
-				buff[7]+=rx[10];
-				
-				
-				data_check(buff[0],1023,0);
-				data_check(buff[1],1023,0);
-				data_check(buff[2],1023,0);
-				data_check(buff[3],1023,0);
-				data_check(buff[4],1023,0);
-				data_check(buff[5],1023,0);
-				data_check(buff[6],1023,0);
-				data_check(buff[7],1023,0);
-				
-				out_control_data[0]=buff[0];
-				out_control_data[1]=buff[1];
-				out_control_data[2]=buff[2];
-				out_control_data[3]=buff[3];
-				out_control_data[4]=buff[4];
-				out_control_data[5]=buff[5];
-				out_control_data[6]=buff[6];
-				out_control_data[7]=buff[7];
-				
-				
-				Data_change=1;timer4=0;				
-				
-			}
-			else if(rx[0]==0xa1)
-			{
-				buff[0]=rx[1];
-				buff[0]<<=2;
-				buff[0]+=rx[2]>>6;
-				buff[1]=rx[2]&0x3f;
-				buff[1]<<=4;
-				buff[1]+=rx[3]>>4;			
-				buff[2]=rx[3]&0x0f;
-				buff[2]<<=6;
-				buff[2]+=rx[4]>>2;
-				buff[3]=rx[4]&0x03;
-				buff[3]<<=8;
-				buff[3]+=rx[5];
-
-				buff[4]=rx[6];
-				buff[4]<<=2;
-				buff[4]+=rx[7]>>6;
-				buff[5]=rx[7]&0x3f;
-				buff[5]<<=4;
-				buff[5]+=rx[8]>>4;			
-				buff[6]=rx[8]&0x0f;
-				buff[6]<<=6;
-				buff[6]+=rx[9]>>2;
-				buff[7]=rx[9]&0x03;
-				buff[7]<<=8;
-				buff[7]+=rx[10];
-				
-				
-				data_check(buff[0],1023,0);
-				data_check(buff[1],1023,0);
-				data_check(buff[2],1023,0);
-				data_check(buff[3],1023,0);
-				data_check(buff[4],1023,0);
-				data_check(buff[5],1023,0);
-				data_check(buff[6],1023,0);
-				data_check(buff[7],1023,0);
-				
-				CH_data[0]=buff[0];
-				CH_data[1]=buff[1];
-				CH_data[2]=buff[2];
-				CH_data[3]=buff[3];
-				CH_data[4]=buff[4];
-				CH_data[5]=buff[5];
-				CH_data[6]=buff[6];
-				CH_data[7]=buff[7];
-				
-				Get_Sbus_data();
-			}
+			NRF_channel(hopping[hopping_turn]);	
 		}
 		else
 		{
