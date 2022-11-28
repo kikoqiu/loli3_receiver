@@ -1,15 +1,43 @@
+/*
+ * NRF24L01 | Arduino
+ * CE    -> 7
+ * CSN   -> 8
+ * MOSI_pin  -> 11
+ * MISO_pin  -> 12
+ * SCK_pin   -> 13
+ * IRQ   -> 
+ * VCC   -> 小於3.6V
+ * GND   -> GND
+ */
+
+
+/*
+ * IBus 
+* ibus   --> 2 RX
+* vcc --> a3
+* vbat --> with scale to a2
+*/
+
 #include "nRF24L01.h"
 #include <EEPROM.h>
 
+#if 0
 #include <SoftwareSerial.h>
+//* no connect--> 3 TX
 SoftwareSerial mySerial(2, 3); // RX, TX
+#else
+#include "SoftTxSerial.h"
+SoftTxSerial ibusSerial(3); //TX
+SoftTxSerial sbusSerial(2,false); //TX
+#endif
 
-#define IBusSerial mySerial
+#define IBusSerial ibusSerial
 #include "ibus.h"
 IBus ibus(8);
 
 
-
+const int VCCPIN=A3;
+const int VBATPIN=A2;
 
 void fatal(int ms){
   long pos=0;
@@ -67,26 +95,19 @@ u16 buff[8];
 u16 temp1,temp2;
 u8 t_output;
 
-
-
 //电压检测
 u8 t_adc;
 u16 adc1,adc2;
 long last_adc1=1,last_adc2=1;
 u16 voltage_bec,voltage_total;
 
-
-
 //PPM
 u8 t_PPMout;
 u8 T_h,T_l;
 bool PPM_OUT;
 
-
 bool CH1_SW,CH2_SW,CH3_SW,CH4_SW,CH5_SW,CH6_SW,CH7_SW,CH8_SW;
 bool CH1_PWM,CH2_PWM,CH7_PWM;
-
-
 
 //SBUS
 bool SBUS;
@@ -114,20 +135,7 @@ void EEPROM_clean(u8 address_H)	//擦除数据
 }
 
 u8 EEPROM_test(u8 address_H)
-{		
-	
-						 
-								
-								   
-  
-						  
-								 
-									
-   
-			
-   
-	
- 
+{	
 	return 0;
 }
 
@@ -631,15 +639,7 @@ void Get_Sbus_data()
 	Sbus_data[4]=CH_data[4]<<1;
 	Sbus_data[5]=CH_data[5]<<1;
 	Sbus_data[6]=CH_data[6]<<1;
-	Sbus_data[7]=CH_data[7]<<1;
-  /*for(char i=0;i<8;++i){
-    Serial.print(Sbus_data[i]);
-    Serial.print(",");
-  }
-  Serial.println();*/
-
-
-	
+	Sbus_data[7]=CH_data[7]<<1;	
 
 	Sbus_buff[1]=Sbus_data[0];//CH1~CH8
 	Sbus_buff[2]=Sbus_data[0]>>8;
@@ -694,8 +694,6 @@ void Get_Sbus_data()
 	Sbus_tx[22]=0;				
 	Sbus_tx[23]=0;//flag
 	Sbus_tx[24]=0;//End
-
-
 }
 
 void Cycle()
@@ -778,46 +776,20 @@ void Cycle()
 	}	
 	
 	t_adc++;
-  /*
+  
 	if(t_adc==1)
 	{
-		adc1=ADC_RES;
-		adc1<<=2,adc1+=ADC_RESL;
-		
+		adc1=analogRead(VCCPIN);		
 		last_adc1=(adc1+last_adc1*9/10);
-		
-		P1ASF=0x02;
-		ADC_CONTR=0x89;	
 	}
 	else if(t_adc==2)
 	{
 		t_adc=0;
-		adc2=ADC_RES;
-		adc2<<=2,adc2+=ADC_RESL;
-		
+		adc2=analogRead(VBATPIN);		
 		last_adc2=(adc2+last_adc2*9/10);
 		
-		P1ASF=0x00;
-		ADC_CONTR=0x88;	
-	}*/
-	
+	}	
 }
-
-/*************************************************************/
-//串口通信
-
-/*
-void UartInit(void)		//100000bps@12.000MHz
-{
-	SCON = 0xD0;		//9位数据,可变波特率
-	AUXR |= 0x01;		//串口1选择定时器2为波特率发生器
-	AUXR |= 0x04;		//定时器2时钟为Fosc,即1T
-	T2L = 0xE2;		//设定定时初值
-	T2H = 0xFF;		//设定定时初值
-
-}
-
-*/
 
 
 void initial()
@@ -869,8 +841,8 @@ void initial()
 #endif
 
 	/*.println("nfrtest");
-	NRF_test();
-  
+  //not working
+	NRF_test();  
 	if(NRF_error)//模块错误闪灯
 	{
 		//LED_flash(10);    
@@ -880,9 +852,7 @@ void initial()
 	}*/
 	
 	NRF_init();
-
 	
-  //restar=1;
 	if(restar)first=1;
 	if(first)
 	{
@@ -1086,14 +1056,12 @@ int mymain(){
 
   initial();
 
-
   NRF_channel(hopping[0]);
-
 	while((!available()));
+
+
   Serial.println("ready");
 	nolose=1;
-	
-
   unsigned long prevtime=micros();
   long timepased=0;
 	while(1)
@@ -1102,11 +1070,8 @@ int mymain(){
       unsigned long current=micros();
       timepased+=(unsigned long)((long) current - (long)prevtime);
       prevtime=current;
-      //Serial.println(timepased);
       if(timepased>3000){
         Cycle();
-        //Serial.println("cycling");
-        //Serial.println(current);
         timepased-=3000;
       }
     }while((!available())&&nolose);
@@ -1133,8 +1098,6 @@ int mymain(){
 
       TX_mode();
 			tx[0]=rx_num;
-      last_adc1=1299210/4;
-      last_adc2=1299210/2;
 			voltage_bec=1299210/last_adc1;      
 			tx[1]=voltage_bec>>8;
 			tx[2]=voltage_bec;
@@ -1189,198 +1152,16 @@ int mymain(){
 
 
 
-#include <printf.h>
-/* ArduinoProMini-6通道接收機 
- *     by Bilibili 蔡子CaiZi
- *     
- * PWM輸出 -> 引腳2~6、9
- * 
- * NRF24L01 | Arduino
- * CE    -> 7
- * CSN   -> 8
- * MOSI_pin  -> 11
- * MISO_pin  -> 12
- * SCK_pin   -> 13
- * IRQ   -> 無連接
- * VCC   -> 小於3.6V
- * GND   -> GND
- */
- 
-#if false
-#include <nRF24L01.h>
-#include <RF24.h>
-RF24 radio(7, 8); 
-#endif
-
-
 void setup()
 {
-  mySerial.begin(115200);
+  ibusSerial.begin(115200);
+  sbusSerial.begin(100000);
   Serial.begin(115200);
   mymain();
 }
 
 void loop(){ 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#if false
-
-#include "ibus.h"
-
-
-// //////////////////
-// Edit here the pins (as for digitalRead()) that you want to read the PWM signals from.
-// IMPORTANT! The pinst MUST belong to the same port. Search 'pinout' in google for
-// your Arduino model and choose pins from the same port (for example PD, PB, etc.)
-// On Arduino Uno/Nano you can safely use pins 2 through 7, as they all use the same port PD.
-byte pins[] = {2, 3, 4, 5};
-
-
-// //////////////////
-
-
-
-
-
-#define BAUD_RATE 115200
-
-struct {
-  uint8_t mask;
-  unsigned long time;
-  byte state;
-} pinData[sizeof(pins)];
-
-struct {
-  unsigned long time;
-  uint8_t state;
-} state_history[2*sizeof(pins)];
-
-#define FOR_PINS for(int i=0; i < sizeof(pins); i++)
-#define PIN pinData[i]
-
-IBus ibus(sizeof(pins));
-volatile uint8_t *port; // store the address of the port register
-uint8_t mask; // mask for the pins of interest
-
-void setup()
-{
-  Serial.begin(BAUD_RATE);           // setup serial
-
-  // take the port register from the first pin. The other pins MUST use the same port
-  port = portInputRegister(digitalPinToPort(pins[0]));
-  mask = 0;
-
-  FOR_PINS {
-    PIN.mask = digitalPinToboolMask(pins[i]); // mask for the individual pin
-    mask |= PIN.mask; // accumulate all masks
-  }
-}
-
-enum {
-  STATE_INIT, STATE_NORMAL
-} program_state = STATE_INIT;
-
-
-unsigned short tt=0;
-void loop()
-{
-    // send the data
-  ibus.begin();
-  FOR_PINS {
-    ibus.write(tt++);
-  }
-  ibus.end();
-  return;
-
-  if (program_state == STATE_INIT) {
-    // wait until all pins are down
-    while(*port & mask);
-
-    program_state = STATE_NORMAL;
-  }
-
-  uint8_t prev_state = 0, new_state;
-  int history_index = 0;
-
-
-  // Arduinos like Uno/Nano don't have interrupts or timers for all pins so we need to poll for changes and 
-  // measure the PWM pulse lengths manually. The problem is that we have to be very quick since we're dealing
-  // with microsecond timescales and every instruction counts. The method employed here is to have a tight loop
-  // which records all the changes to the port and the time of occurence. After all pins are down
-  // we have plenty of time to process the list and send the data over IBUS.
-  for(;;) {
-    while(prev_state == (new_state = *port & mask)); // wait for change in state
-
-    state_history[history_index++] = { micros(), prev_state = new_state };
-
-    if(!new_state || history_index == sizeof(state_history))
-      break; // all pins are down (we have captured all pulses) OR we have gone beyond the size of state_history
-  }
-
-  if(new_state) {
-    program_state = STATE_INIT; // something's wrong. We didn't reach a state where all pins are down. Start over.
-    return;
-  }
-
-  // Process the states
-  for(int ih = 0; ih < history_index; ih++) {
-    uint8_t state = state_history[ih].state;
-    unsigned long time = state_history[ih].time;
-
-    FOR_PINS {
-      int s = (bool)(state & PIN.mask);
-
-      if (!PIN.state && s) { // low to high
-        PIN.time = time; // save pulse starting time;
-      }
-      else if (PIN.state && !s) { // high to low
-        PIN.time = time - PIN.time; // calculate pulse width
-      }
-      PIN.state = s;
-    }
-  }
-
-  // send the data
-  ibus.begin();
-  FOR_PINS {
-    ibus.write(PIN.time);
-  }
-  ibus.end();
-}
-
-
-
-#endif
-
-
-
-
 
 
 
