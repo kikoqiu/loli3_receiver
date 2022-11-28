@@ -1,5 +1,15 @@
 #include "nRF24L01.h"
 #include <EEPROM.h>
+/*
+#include <SoftwareSerial.h>
+SoftwareSerial mySerial(2, 3); // RX, TX
+
+#define IBusSerial mySerial
+#include "ibus.h"
+IBus ibus(8);*/
+
+
+
 
 void fatal(int ms){
   long pos=0;
@@ -92,16 +102,32 @@ u8 EEPROM_read(u8 address_H,u16 address_L)	//读数据
 {
   return EEPROM[address_L];
 }
+
 void EEPROM_write(u8 address_H,u16 address_L,u8 byte)	//写入数据
 {
   EEPROM.update(address_L, byte);
 }
+
 void EEPROM_clean(u8 address_H)	//擦除数据
 {
   //no action
 }
+
 u8 EEPROM_test(u8 address_H)
 {		
+	
+						 
+								
+								   
+  
+						  
+								 
+									
+   
+			
+   
+	
+ 
 	return 0;
 }
 
@@ -253,6 +279,7 @@ void DATA_save()
   }
   Serial.println("after write");
 
+				
 }
 
 
@@ -423,11 +450,14 @@ void NRF_channel(u8 c)
 	digitalWrite(ce_pin,1);
 }
 
+
+						  
 uint8_t get_status()
 {
     return REG_write(RF24_NOP,RF24_NOP,true);
 }
 
+					 
 bool available(uint8_t* pipe_num=0)
 {
     // get implied RX FIFO empty flag from status byte
@@ -586,6 +616,14 @@ void data_check(int x,int max,int min)
 
 void Get_Sbus_data()
 {
+  /*return;
+  ibus.begin();
+  for(byte c=0;c<8;++c) {
+    ibus.write(CH_data[c]);
+  }
+  ibus.end();
+  return;*/
+
 	Sbus_data[0]=CH_data[0]<<1;
 	Sbus_data[1]=CH_data[1]<<1;
 	Sbus_data[2]=CH_data[2]<<1;
@@ -599,6 +637,7 @@ void Get_Sbus_data()
     Serial.print(",");
   }
   Serial.println();*/
+
 
 	
 
@@ -655,6 +694,7 @@ void Get_Sbus_data()
 	Sbus_tx[22]=0;				
 	Sbus_tx[23]=0;//flag
 	Sbus_tx[24]=0;//End
+
 
 }
 
@@ -1090,9 +1130,10 @@ int mymain(){
       //delay(1);
       while(true){
         unsigned long timepassed=(long)micros()-long(prevtime);
-        if(timepassed>=500)break;
+        if(timepassed>=600)break;
       }
 
+      TX_mode();
 			tx[0]=rx_num;
       last_adc1=1299210/4;
       last_adc2=1299210/2;
@@ -1118,6 +1159,183 @@ int mymain(){
 			hopping_turn++;
 			if(hopping_turn>4)hopping_turn=0;
 			NRF_channel(hopping[hopping_turn]);	
+
+
+				  
+	
+				
+	
+				  
+	 
+			   
+	 
+		 
+	 
+			   
+	 
+	
+				  
+	 
+			
+	 
+		 
+	 
+			
+	 
+	
+			
+	 
+				  
+	 
+	
+				  
+	 
+			   
+	 
+		 
+	 
+			   
+	 
+	
+				  
+	 
+			   
+	 
+		 
+	 
+			   
+	 
+	
+				  
+	 
+			   
+	 
+		 
+	 
+			   
+	 
+	
+						   
+				  
+						   
+				  
+						   
+				  
+						   
+				  
+						   
+				  
+						   
+				  
+						   
+				  
+						   
+					  
+	
+						   
+	
+					   
+	
+					  
+	
+				  
+				
+					  
+					   
+				
+						 
+					   
+				
+					  
+					   
+				
+				   
+
+				  
+				
+					  
+					   
+				
+						 
+					   
+				
+					  
+					   
+				
+					
+	
+	
+							   
+							   
+							   
+							   
+							   
+							   
+							   
+							   
+	
+								
+								
+								
+								
+								
+								
+								
+								
+	
+	
+							   
+	
+	
+					   
+	
+				  
+				
+					  
+					   
+				
+						 
+					   
+				
+					  
+					   
+				
+				   
+
+				  
+				
+					  
+					   
+				
+						 
+					   
+				
+					  
+					   
+				
+					
+	
+	
+							   
+							   
+							   
+							   
+							   
+							   
+							   
+							   
+	
+					   
+					   
+					   
+					   
+					   
+					   
+					   
+					   
+	
+					
+	
 		}
 		else
 		{
@@ -1174,6 +1392,7 @@ RF24 radio(7, 8);
 
 void setup()
 {
+  //mySerial.begin(115200);
   Serial.begin(115200);
   mymain();
 }
