@@ -1,12 +1,12 @@
 #include "nRF24L01.h"
 #include <EEPROM.h>
-/*
+
 #include <SoftwareSerial.h>
 SoftwareSerial mySerial(2, 3); // RX, TX
 
 #define IBusSerial mySerial
 #include "ibus.h"
-IBus ibus(8);*/
+IBus ibus(8);
 
 
 
@@ -616,13 +616,13 @@ void data_check(int x,int max,int min)
 
 void Get_Sbus_data()
 {
-  /*return;
+  //ibus 1000 to 2000
   ibus.begin();
   for(byte c=0;c<8;++c) {
-    ibus.write(CH_data[c]);
+    ibus.write(CH_data[c]+1000);
   }
   ibus.end();
-  return;*/
+  return;
 
 	Sbus_data[0]=CH_data[0]<<1;
 	Sbus_data[1]=CH_data[1]<<1;
@@ -1124,8 +1124,6 @@ int mymain(){
 			REG_write(0x07,0x40);	//清除无线模块中断信号
 			digitalWrite(ce_pin,1);
 
-      //process input first
-      processInputData();
       //wait for the sender to get ready for rx   !!! 
       //delay(1);
       while(true){
@@ -1147,10 +1145,12 @@ int mymain(){
       //Serial.println((int)rx_num);
 
 			FIFO_write(tx,11);
+
+      //process input first
+      processInputData();
 			delay(1);
 
 			RX_mode();
-
 			if(jump_mode)
 			{
 				jump_mode=0;
@@ -1159,183 +1159,6 @@ int mymain(){
 			hopping_turn++;
 			if(hopping_turn>4)hopping_turn=0;
 			NRF_channel(hopping[hopping_turn]);	
-
-
-				  
-	
-				
-	
-				  
-	 
-			   
-	 
-		 
-	 
-			   
-	 
-	
-				  
-	 
-			
-	 
-		 
-	 
-			
-	 
-	
-			
-	 
-				  
-	 
-	
-				  
-	 
-			   
-	 
-		 
-	 
-			   
-	 
-	
-				  
-	 
-			   
-	 
-		 
-	 
-			   
-	 
-	
-				  
-	 
-			   
-	 
-		 
-	 
-			   
-	 
-	
-						   
-				  
-						   
-				  
-						   
-				  
-						   
-				  
-						   
-				  
-						   
-				  
-						   
-				  
-						   
-					  
-	
-						   
-	
-					   
-	
-					  
-	
-				  
-				
-					  
-					   
-				
-						 
-					   
-				
-					  
-					   
-				
-				   
-
-				  
-				
-					  
-					   
-				
-						 
-					   
-				
-					  
-					   
-				
-					
-	
-	
-							   
-							   
-							   
-							   
-							   
-							   
-							   
-							   
-	
-								
-								
-								
-								
-								
-								
-								
-								
-	
-	
-							   
-	
-	
-					   
-	
-				  
-				
-					  
-					   
-				
-						 
-					   
-				
-					  
-					   
-				
-				   
-
-				  
-				
-					  
-					   
-				
-						 
-					   
-				
-					  
-					   
-				
-					
-	
-	
-							   
-							   
-							   
-							   
-							   
-							   
-							   
-							   
-	
-					   
-					   
-					   
-					   
-					   
-					   
-					   
-					   
-	
-					
-	
 		}
 		else
 		{
@@ -1392,7 +1215,7 @@ RF24 radio(7, 8);
 
 void setup()
 {
-  //mySerial.begin(115200);
+  mySerial.begin(115200);
   Serial.begin(115200);
   mymain();
 }
