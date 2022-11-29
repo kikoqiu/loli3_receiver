@@ -1,4 +1,12 @@
 /*
+arduino pro mini loli3 遥控器接收
+支持ibus输出，串口rx接pin 3。用vJoySerialFeeder可以连电脑模拟器 https://github.com/Cleric-K/vJoySerialFeeder
+支持sbus输出，pin 2 （与标协议有差别，每秒只有50个数据，未测试是否可用），遥控器5通道启用sbus输出 configure ch5 to sbus in controller to enable sbus output。
+pin4 pin5 短接重新对码
+kikoqiu@163.com
+*/
+
+/*
  * NRF24L01 | Arduino
  * CE    -> 7
  * CSN   -> 8
@@ -6,18 +14,14 @@
  * MISO_pin  -> 12
  * SCK_pin   -> 13
  * IRQ   -> 
- * VCC   -> 小於3.6V
+ * VCC   -> < 3.6V
  * GND   -> GND
- */
 
-/*		
-* ibus   --> 2
-* sbus   --> 3
-* vcc --> a3
-* vbat --> a2 (add Potentiometer)
+ * ibus   --> 3
+ * sbus   --> 2
+ * vcc voltage meter --> a3
+ * vbat voltage meter --> a2 (加电位器 add Potentiometer)
 */
-
-//configure ch5 to sbus in controller to enable sbus output
 
 const uint8_t ibus_pin=3;
 const uint8_t sbus_pin=2;
@@ -25,7 +29,7 @@ const long ibus_baudrate=115200;
 const long sbus_baudrate=100000;
 const bool sbus_invert_sig=true;
 const int8_t sbus_parity=0;//0 even or 1 odd, 2 if no parity bit
-const int sbus_stopbit=2;					 
+const int sbus_stopbit=2;
 
 #include "nRF24L01.h"
 #include <EEPROM.h>
@@ -36,7 +40,6 @@ const int sbus_stopbit=2;
 #include "SoftTxSerial.h"
 SoftTxSerial ibusSerial(ibus_pin); 
 SoftTxSerial sbusSerial(sbus_pin,sbus_invert_sig,sbus_parity,sbus_stopbit); //TX,invert_login,stopbit
-
 
 
 #define IBusSerial ibusSerial
@@ -58,6 +61,7 @@ void fatal(int ms){
   //SPCR = SPI_io_save;
 }
 
+//not used
 bool CH1,CH2,CH3,CH4,CH5,CH6,CH7,CH8,LED;
 /**************************************************************************/
 
@@ -811,28 +815,7 @@ void initial()
   restar=(SS1^SS2)&1;
   pinMode(4,INPUT);
   pinMode(5,INPUT);
-	/*CH5=0;CH6=1;			//如果CH5与CH6被短接，重新对码
-	delay(1);
-	if(CH6==0)		  //修正通道6插上舵机不能用
-	{
-		P3M0=0x02;	  //插上舵机也会使CH6为0，所以将CH5设为推挽
-		CH5=1;
-		delay(1);
-		if(CH6)restar=1;   //如果CH6被拉高，说明5/6通道短接，启动重新对码
-	}
-	CH5=0;CH6=0;
-	 	
 	
-	P3M0=0xcf;	 //
-	P1M1=0x02;	//将通道输出IO口配置为推挽模式，保证正常驱动电调与舵机
-
-	
-	while(1)
-	{
-		if(EEPROM_test(2))break;
-		else delay(100);
-	}
-	*/
 
 	DATA_read();
 	data_check(out_control_data[0],1023,0);
